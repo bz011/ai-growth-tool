@@ -880,10 +880,20 @@ export default function AdminPage() {
                       {post.status !== 'published' && (
                         <PrimaryBtn label="Publish" loadingLabel="Publishing..."
                           loading={busy === `${post.id}:publish`}
-                          disabled={busy === `${post.id}:publish`}
+                          disabled={!!busy}
                           onClick={() => run(`${post.id}:publish`,
                             () => fetch(`/api/posts/${post.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'published' }) }),
                             'Post published.'
+                          )}
+                        />
+                      )}
+                      {post.status === 'published' && (
+                        <SecondaryBtn label="Republish" loadingLabel="Republishing..."
+                          loading={busy === `${post.id}:republish`}
+                          disabled={!!busy}
+                          onClick={() => run(`${post.id}:republish`,
+                            () => fetch(`/api/posts/${post.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'published' }) }),
+                            'Post republished to website.'
                           )}
                         />
                       )}
