@@ -888,14 +888,24 @@ export default function AdminPage() {
                         />
                       )}
                       {post.status === 'published' && (
-                        <SecondaryBtn label="Republish" loadingLabel="Republishing..."
-                          loading={busy === `${post.id}:republish`}
-                          disabled={!!busy}
-                          onClick={() => run(`${post.id}:republish`,
-                            () => fetch(`/api/posts/${post.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'published' }) }),
-                            'Post republished to website.'
-                          )}
-                        />
+                        <>
+                          <SecondaryBtn label="Republish" loadingLabel="Republishing..."
+                            loading={busy === `${post.id}:republish`}
+                            disabled={!!busy}
+                            onClick={() => run(`${post.id}:republish`,
+                              () => fetch(`/api/posts/${post.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'published' }) }),
+                              'Post republished to website.'
+                            )}
+                          />
+                          <DangerBtn label="Delete from website" loadingLabel="Deleting..."
+                            loading={busy === `${post.id}:delete-web`}
+                            disabled={!!busy}
+                            onClick={() => run(`${post.id}:delete-web`,
+                              () => fetch(`/api/posts/${post.id}`, { method: 'DELETE' }),
+                              `"${post.title}" removed from website.`
+                            )}
+                          />
+                        </>
                       )}
                     </div>
                     <div style={{ fontSize: 12, color: C.muted, marginBottom: 3 }}>

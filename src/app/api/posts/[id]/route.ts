@@ -3,6 +3,7 @@ import { getPostById, updatePostStatus } from '../../../../data/posts.repo';
 import { PostStatus } from '../../../../types';
 
 const WEBSITE_PUBLISH_URL = 'https://zentexai.com/api/publish-post';
+const WEBSITE_DELETE_URL  = 'https://zentexai.com/api/delete-post';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -77,4 +78,32 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!updated) return Response.json({ message: 'Post not found' }, { status: 404 });
   console.log(`[PATCH /api/posts/${id}] done`);
   return Response.json(updated);
+}
+
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+
+  const post = await getPostById(id);
+  if (!post) return Response.json({ message: 'Post not found' }, { status: 404 });
+
+  try {
+    const res = await fetch(WEBSITE_DELETE_URL, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug: post.slug }),
+    });
+    const body = await res.text();
+
+    if (!res.ok) {
+      return Response.json(
+        { message: `Website delete failed (${res.status}): ${body}` },
+        { status: 502 }
+      );
+    }
+
+    return Response.json({ success: true, slug: post.slug });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return Response.json({ message: `Could not reach website: ${msg}` }, { status: 502 });
+  }
 }
