@@ -504,6 +504,9 @@ export default function AdminPage() {
   const [postFilter,   setPostFilter]   = useState<PostFilter>('all');
   const [showTopics,   setShowTopics]   = useState(false);
   const [showAllTrends, setShowAllTrends] = useState(false);
+  const [showManualForm, setShowManualForm] = useState(false);
+  const [manualKeyword,  setManualKeyword]  = useState('');
+  const [manualRegion,   setManualRegion]   = useState('');
 
   const loadData = useCallback(async () => {
     const [tr, to, po] = await Promise.all([
@@ -530,6 +533,30 @@ export default function AdminPage() {
         await loadData();
         setSuccess(successMsg);
         setTimeout(() => setSuccess(null), 3500);
+      }
+    } catch (e) { setError(String(e)); }
+    finally { setBusy(null); }
+  }
+
+  async function injectManualTrend() {
+    if (!manualKeyword.trim()) return;
+    setBusy('manual-inject'); setError(null); setSuccess(null);
+    try {
+      const res = await fetch('/api/trends/manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyword: manualKeyword.trim(), region: manualRegion.trim() || 'global' }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.message ?? `Error ${res.status}`);
+      } else {
+        await loadData();
+        setSuccess(`Trend "${manualKeyword.trim()}" injected.`);
+        setTimeout(() => setSuccess(null), 3500);
+        setManualKeyword('');
+        setManualRegion('');
+        setShowManualForm(false);
       }
     } catch (e) { setError(String(e)); }
     finally { setBusy(null); }
@@ -590,11 +617,24 @@ export default function AdminPage() {
             </div>
             <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>Trends → Topics → Posts · Internal workflow</p>
           </div>
-          <div style={{ display: 'flex', gap: 20, fontSize: 12, color: '#94a3b8' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20, fontSize: 12, color: '#94a3b8' }}>
             <span><strong style={{ color: '#fff', fontSize: 16 }}>{totalUniqueTrends}</strong> trends</span>
             <span><strong style={{ color: '#fff', fontSize: 16 }}>{totalTopics}</strong> topics</span>
             <span><strong style={{ color: '#fff', fontSize: 16 }}>{draftCount}</strong> drafts</span>
             <span><strong style={{ color: '#fff', fontSize: 16 }}>{publishedCount}</strong> published</span>
+            <button
+              onClick={async () => {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                window.location.href = '/login';
+              }}
+              style={{
+                padding: '5px 13px', fontSize: 12, fontWeight: 600, borderRadius: 7,
+                border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.07)',
+                color: '#cbd5e1', cursor: 'pointer',
+              }}
+            >
+              Logout
+            </button>
           </div>
         </div>
       </div>
@@ -628,15 +668,67 @@ export default function AdminPage() {
           <SectionCard
             step="1" title="Trends" count={totalUniqueTrends}
             right={
-              uniqueTrends.length > 10 ? (
-                <button onClick={() => setShowAllTrends(v => !v)} style={{ fontSize: 12, color: C.primary, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
-                  {showAllTrends ? 'Show fewer' : `Show all ${uniqueTrends.length}`}
-                </button>
-              ) : undefined
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {uniqueTrends.length > 10 && (
+                  <button onClick={() => setShowAllTrends(v => !v)} style={{ fontSize: 12, color: C.primary, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                    {showAllTrends ? 'Show fewer' : `Show all ${uniqueTrends.length}`}
+                  </button>
+                )}
+                <SecondaryBtn
+                  label={showManualForm ? '✕ Cancel' : '+ Inject Trend'}
+                  onClick={() => setShowManualForm(v => !v)}
+                />
+              </div>
             }
           >
+            {showManualForm && (
+              <div style={{
+                marginBottom: 16, padding: '14px 16px', borderRadius: 8,
+                background: '#f8fafc', border: `1px solid ${C.border}`,
+              }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.body, marginBottom: 12 }}>Inject Manual Trend</div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                  <div>
+                    <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Keyword *</label>
+                    <input
+                      value={manualKeyword}
+                      onChange={e => setManualKeyword(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && injectManualTrend()}
+                      placeholder="e.g. AI tools for startups"
+                      style={{
+                        padding: '7px 10px', fontSize: 13, borderRadius: 6, width: 260,
+                        border: `1px solid ${C.border}`, outline: 'none', fontFamily: 'inherit',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Region</label>
+                    <input
+                      value={manualRegion}
+                      onChange={e => setManualRegion(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && injectManualTrend()}
+                      placeholder="sa, ae, global…"
+                      style={{
+                        padding: '7px 10px', fontSize: 13, borderRadius: 6, width: 130,
+                        border: `1px solid ${C.border}`, outline: 'none', fontFamily: 'inherit',
+                      }}
+                    />
+                  </div>
+                  <PrimaryBtn
+                    label="Inject"
+                    loadingLabel="Injecting..."
+                    loading={busy === 'manual-inject'}
+                    disabled={!manualKeyword.trim() || !!busy}
+                    onClick={injectManualTrend}
+                  />
+                </div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 8 }}>
+                  Injected trends appear with <code style={{ background: '#f1f5f9', padding: '1px 4px', borderRadius: 3 }}>source = manual</code> and score 100.
+                </div>
+              </div>
+            )}
             {visibleTrends.length === 0 ? (
-              <EmptyState message="No trends yet. Call POST /api/trends/run to ingest." />
+              <EmptyState message="No trends yet. Use '+ Inject Trend' above or call POST /api/trends/run." />
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
